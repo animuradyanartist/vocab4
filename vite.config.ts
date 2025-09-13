@@ -7,6 +7,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      devOptions: { enabled: false }, // set true only if you want PWA in dev
       includeAssets: ['icons/icon-192.png', 'icons/icon-512.png', 'vite.svg'],
       manifest: {
         name: 'Vocabulary Learner - Armenian',
@@ -22,7 +23,7 @@ export default defineConfig({
         ]
       },
       workbox: {
-        navigateFallback: '/index.html',
+        navigateFallback: '/index.html'
       }
     })
   ]
