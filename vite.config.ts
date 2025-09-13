@@ -6,16 +6,24 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      // build a service worker and update it automatically
       registerType: 'autoUpdate',
-      // inject the small registration script automatically
-      injectRegister: 'auto',
-      // we already have /public/manifest.json, so don't override it here
-      manifest: false,
-      // cache your built assets + HTML/CSS/JSON/icons
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,json,woff2}'],
+      includeAssets: ['icons/icon-192.png', 'icons/icon-512.png', 'vite.svg'],
+      manifest: {
+        name: 'Vocabulary Learner - Armenian',
+        short_name: 'Vocab Learner',
+        description: 'Learn Armenian vocabulary with offline support',
+        theme_color: '#4f46e5',
+        background_color: '#ffffff',
+        display: 'standalone',
+        start_url: '/',
+        icons: [
+          { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+          { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' }
+        ]
       },
-    }),
-  ],
+      workbox: {
+        navigateFallback: '/index.html',
+      }
+    })
+  ]
 })
