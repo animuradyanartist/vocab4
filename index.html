@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#4f46e5" />
+    <meta name="description" content="Learn Armenian vocabulary with offline support" />
+    
+    
+    <title>Vocabulary Learner - Armenian</title>
+  </head>
+  <body>
+    <div id="root">
+      <div id="boot-fallback" style="padding:16px;font-family:system-ui;text-align:center">
+        Loading application…
+      </div>
+    </div>
+    <script>
+      const bootTimeout = setTimeout(() => {
+        const el = document.getElementById('boot-fallback');
+        if (el) el.innerHTML = '⚠️ App is taking too long. Try Ctrl/Cmd+Shift+R.';
+      }, 8000);
+
+      window.__APP_BOOT_OK__ = () => {
+        clearTimeout(bootTimeout);
+        const el = document.getElementById('boot-fallback');
+        if (el) el.style.display = 'none';
+      };
+
+      // Show real error details in prod to help fix fast
+      function showFatal(msg) {
+        const el = document.getElementById('boot-fallback');
+        if (el) {
+          el.style.display = 'block';
+          el.innerHTML = `<div style="max-width:720px;margin:24px auto;text-align:left">
+            <h3>❌ Startup error</h3>
+            <pre style="white-space:pre-wrap">${msg}</pre>
+            <button onclick="location.reload()" style="margin-top:12px">Refresh</button>
+          </div>`;
+        }
+        console.error(msg);
+      }
+      window.addEventListener('error', e => showFatal(`${e.message}\n${e.filename}:${e.lineno}`));
+      window.addEventListener('unhandledrejection', e => showFatal(String(e.reason)));
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
