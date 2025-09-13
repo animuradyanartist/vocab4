@@ -1,24 +1,21 @@
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
-  base: '/',
-  plugins: [react()],
-  build: {
-    sourcemap: false,
-    minify: 'esbuild',
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom'],
-          supabase: ['@supabase/supabase-js'],
-          icons: ['lucide-react']
-        }
-      }
-    },
-    chunkSizeWarningLimit: 1000
-  },
-  optimizeDeps: {
-    exclude: ['lucide-react']
-  }
-});
+  plugins: [
+    react(),
+    VitePWA({
+      // build a service worker and update it automatically
+      registerType: 'autoUpdate',
+      // inject the small registration script automatically
+      injectRegister: 'auto',
+      // we already have /public/manifest.json, so don't override it here
+      manifest: false,
+      // cache your built assets + HTML/CSS/JSON/icons
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,json,woff2}'],
+      },
+    }),
+  ],
+})
