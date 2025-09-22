@@ -1,11 +1,12 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { X, Volume2, Save, Loader2, BookOpen, Languages } from 'lucide-react';
-import { translateFromEnglish } from '../utils/translateToArmenian'; // ⭐ NEW import
+import { translateFromEnglish } from '../utils/translate'; // ✅ FIXED import
 
 interface AddWordModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (word: { english: string; translation: string }) => void; // ⭐ renamed armenian → translation
+  // keep parent's API consistent: we pass translation as "armenian"
+  onSave: (word: { english: string; armenian: string }) => void;
 }
 
 interface DictionaryData {
@@ -18,7 +19,7 @@ interface DictionaryData {
 
 const AddWordModal: React.FC<AddWordModalProps> = ({ isOpen, onClose, onSave }) => {
   const [englishWord, setEnglishWord] = useState('');
-  const [translation, setTranslation] = useState(''); // ⭐ renamed
+  const [translation, setTranslation] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [dictionaryData, setDictionaryData] = useState<DictionaryData | null>(null);
   const [isLoadingDefinition, setIsLoadingDefinition] = useState(false);
@@ -66,7 +67,6 @@ const AddWordModal: React.FC<AddWordModalProps> = ({ isOpen, onClose, onSave }) 
     }
   }, []);
 
-  // ⭐ updated: use translateFromEnglish
   const doTranslate = useCallback(async (word: string) => {
     if (!word.trim()) {
       setTranslation('');
@@ -136,7 +136,8 @@ const AddWordModal: React.FC<AddWordModalProps> = ({ isOpen, onClose, onSave }) 
   const handleSave = useCallback(async () => {
     if (!englishWord.trim() || !translation.trim()) return;
     setIsSaving(true);
-    await onSave({ english: englishWord.trim(), translation: translation.trim() }); // ⭐ save translation
+    // ✅ still send { english, armenian } so nothing else breaks
+    await onSave({ english: englishWord.trim(), armenian: translation.trim() });
     setEnglishWord('');
     setTranslation('');
     setDictionaryData(null);
