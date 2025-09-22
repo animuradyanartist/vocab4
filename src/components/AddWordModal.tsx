@@ -1,12 +1,12 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { X, Volume2, Save, Loader2, BookOpen, Languages } from 'lucide-react';
-import { translateFromEnglish } from '../utils/translate'; // ✅ FIXED import
+import React, { useState, useCallback, useRef, useEffect } from "react";
+import { X, Volume2, Save, Loader2, BookOpen, Languages } from "lucide-react";
+import { translateFromEnglish } from "../utils/translate";
 
 interface AddWordModalProps {
   isOpen: boolean;
   onClose: () => void;
-  // keep parent's API consistent: we pass translation as "armenian"
-  onSave: (word: { english: string; armenian: string }) => void;
+  // ⚡ UI always uses translation
+  onSave: (word: { english: string; translation: string }) => void;
 }
 
 interface DictionaryData {
@@ -18,8 +18,8 @@ interface DictionaryData {
 }
 
 const AddWordModal: React.FC<AddWordModalProps> = ({ isOpen, onClose, onSave }) => {
-  const [englishWord, setEnglishWord] = useState('');
-  const [translation, setTranslation] = useState('');
+  const [englishWord, setEnglishWord] = useState("");
+  const [translation, setTranslation] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [dictionaryData, setDictionaryData] = useState<DictionaryData | null>(null);
   const [isLoadingDefinition, setIsLoadingDefinition] = useState(false);
@@ -30,9 +30,9 @@ const AddWordModal: React.FC<AddWordModalProps> = ({ isOpen, onClose, onSave }) 
 
   const playPronunciation = useCallback(() => {
     if (!englishWord.trim()) return;
-    if ('speechSynthesis' in window) {
+    if ("speechSynthesis" in window) {
       const utterance = new SpeechSynthesisUtterance(englishWord);
-      utterance.lang = 'en-US';
+      utterance.lang = "en-US";
       utterance.rate = 0.8;
       speechSynthesis.speak(utterance);
     }
@@ -45,8 +45,10 @@ const AddWordModal: React.FC<AddWordModalProps> = ({ isOpen, onClose, onSave }) 
     }
     setIsLoadingDefinition(true);
     try {
-      const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word.trim()}`);
-      if (!response.ok) throw new Error('Definition not found');
+      const response = await fetch(
+        `https://api.dictionaryapi.dev/api/v2/entries/en/${word.trim()}`
+      );
+      if (!response.ok) throw new Error("Definition not found");
       const data = await response.json();
       const entry = data[0];
       if (entry) {
@@ -69,7 +71,7 @@ const AddWordModal: React.FC<AddWordModalProps> = ({ isOpen, onClose, onSave }) 
 
   const doTranslate = useCallback(async (word: string) => {
     if (!word.trim()) {
-      setTranslation('');
+      setTranslation("");
       return;
     }
     setIsTranslating(true);
@@ -79,12 +81,12 @@ const AddWordModal: React.FC<AddWordModalProps> = ({ isOpen, onClose, onSave }) 
       if (res.success) {
         setTranslation(res.translatedText);
       } else {
-        setTranslation('');
-        setTranslationError(`❌ ${res.error || 'Translation failed'}`);
+        setTranslation("");
+        setTranslationError(`❌ ${res.error || "Translation failed"}`);
       }
     } catch (error: any) {
-      console.error('Translation error:', error);
-      setTranslationError(`❌ ${error?.message || 'Translation failed. Please try again.'}`);
+      console.error("Translation error:", error);
+      setTranslationError(`❌ ${error?.message || "Translation failed. Please try again."}`);
     } finally {
       setIsTranslating(false);
       setTimeout(() => setTranslationError(null), 4000);
@@ -109,7 +111,7 @@ const AddWordModal: React.FC<AddWordModalProps> = ({ isOpen, onClose, onSave }) 
 
   const handleEnglishWordKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === 'Enter' || e.key === 'Tab') {
+      if (e.key === "Enter" || e.key === "Tab") {
         if (translationTimeoutRef.current) clearTimeout(translationTimeoutRef.current);
         if (englishWord.trim()) doTranslate(englishWord);
       }
@@ -124,8 +126,8 @@ const AddWordModal: React.FC<AddWordModalProps> = ({ isOpen, onClose, onSave }) 
   }, []);
 
   const handleClose = useCallback(() => {
-    setEnglishWord('');
-    setTranslation('');
+    setEnglishWord("");
+    setTranslation("");
     setDictionaryData(null);
     setIsTranslating(false);
     setTranslationError(null);
@@ -136,10 +138,9 @@ const AddWordModal: React.FC<AddWordModalProps> = ({ isOpen, onClose, onSave }) 
   const handleSave = useCallback(async () => {
     if (!englishWord.trim() || !translation.trim()) return;
     setIsSaving(true);
-    // ✅ still send { english, armenian } so nothing else breaks
-    await onSave({ english: englishWord.trim(), armenian: translation.trim() });
-    setEnglishWord('');
-    setTranslation('');
+    await onSave({ english: englishWord.trim(), translation: translation.trim() });
+    setEnglishWord("");
+    setTranslation("");
     setDictionaryData(null);
     setIsTranslating(false);
     setTranslationError(null);
@@ -155,14 +156,17 @@ const AddWordModal: React.FC<AddWordModalProps> = ({ isOpen, onClose, onSave }) 
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h2 className="text-2xl font-bold text-gray-800">Add New Word</h2>
-          <button onClick={handleClose} className="p-2 rounded-full hover:bg-gray-100 transition-colors duration-200">
+          <button
+            onClick={handleClose}
+            className="p-2 rounded-full hover:bg-gray-100 transition-colors duration-200"
+          >
             <X className="w-6 h-6 text-gray-500" />
           </button>
         </div>
 
         {/* Content */}
         <div className="p-6 space-y-6">
-          {/* English Word Input */}
+          {/* English Word */}
           <div className="space-y-2">
             <label htmlFor="english-word" className="block text-sm font-medium text-gray-700">
               English Word
@@ -177,7 +181,7 @@ const AddWordModal: React.FC<AddWordModalProps> = ({ isOpen, onClose, onSave }) 
                 onKeyDown={handleEnglishWordKeyDown}
                 className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
                 placeholder="Enter English word..."
-                style={{ color: '#111827' }}
+                style={{ color: "#111827" }}
               />
               <button
                 onClick={playPronunciation}
@@ -204,11 +208,13 @@ const AddWordModal: React.FC<AddWordModalProps> = ({ isOpen, onClose, onSave }) 
               value={translation}
               onChange={(e) => setTranslation(e.target.value)}
               className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 ${
-                isTranslating ? 'border-indigo-300 bg-indigo-50 text-gray-900' : 'border-gray-300 text-gray-900'
+                isTranslating
+                  ? "border-indigo-300 bg-indigo-50 text-gray-900"
+                  : "border-gray-300 text-gray-900"
               }`}
               placeholder="Translation"
               disabled={isTranslating}
-              style={{ color: '#111827' }}
+              style={{ color: "#111827" }}
             />
             {isTranslating && (
               <p className="text-xs text-indigo-600 flex items-center space-x-1">
@@ -235,20 +241,28 @@ const AddWordModal: React.FC<AddWordModalProps> = ({ isOpen, onClose, onSave }) 
                   <div className="space-y-3">
                     <div className="flex items-center space-x-2">
                       <h4 className="font-semibold text-gray-800">{dictionaryData.word}</h4>
-                      {dictionaryData.phonetic && <span className="text-gray-600">/{dictionaryData.phonetic}/</span>}
+                      {dictionaryData.phonetic && (
+                        <span className="text-gray-600">/{dictionaryData.phonetic}/</span>
+                      )}
                       {dictionaryData.partOfSpeech && (
                         <span className="text-indigo-600 text-sm font-medium capitalize">
                           {dictionaryData.partOfSpeech}
                         </span>
                       )}
                     </div>
-                    {dictionaryData.definition && <p className="text-gray-700">{dictionaryData.definition}</p>}
+                    {dictionaryData.definition && (
+                      <p className="text-gray-700">{dictionaryData.definition}</p>
+                    )}
                     {dictionaryData.example && (
-                      <p className="text-gray-600 italic text-sm">Example: "{dictionaryData.example}"</p>
+                      <p className="text-gray-600 italic text-sm">
+                        Example: "{dictionaryData.example}"
+                      </p>
                     )}
                   </div>
                 ) : (
-                  <p className="text-gray-500 text-center py-2">No definition found for "{englishWord}"</p>
+                  <p className="text-gray-500 text-center py-2">
+                    No definition found for "{englishWord}"
+                  </p>
                 )}
               </div>
             </div>
@@ -257,7 +271,10 @@ const AddWordModal: React.FC<AddWordModalProps> = ({ isOpen, onClose, onSave }) 
 
         {/* Footer */}
         <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200">
-          <button onClick={handleClose} className="px-6 py-2 text-gray-600 hover:text-gray-800 transition-colors duration-200">
+          <button
+            onClick={handleClose}
+            className="px-6 py-2 text-gray-600 hover:text-gray-800 transition-colors duration-200"
+          >
             Cancel
           </button>
           <button
