@@ -1,47 +1,11 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { X, Volume2, Save, Loader2, BookOpen, Languages } from 'lucide-react';
-
-// Where to call the function from:
-// - In production (Netlify), leave empty => relative path "/.netlify/functions/translate"
-// - In Bolt preview (local web sandbox), set VITE_FUNCTIONS_BASE in .env to your live Netlify URL
-const FUNCTIONS_BASE = import.meta.env.VITE_FUNCTIONS_BASE || '';
-
-async function translateWithGoogle(text: string, source = 'auto', target = 'hy'): Promise<string> {
-  if (!text?.trim()) return '';
-
-  const url = `${FUNCTIONS_BASE}/.netlify/functions/translate`;
-
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text, source, target }),
-  });
-
-  // Helpful error for debugging
-  if (!res.ok) {
-    let msg = 'Translation failed';
-    try {
-      const j = await res.json();
-      msg = j?.error || msg;
-    } catch {
-      try {
-        msg = (await res.text()) || msg;
-      } catch {}
-    }
-    throw new Error(msg);
-  }
-
-  const data = await res.json();
-  if (!data?.success || !data?.translatedText) {
-    throw new Error(data?.error || 'No translation from server');
-  }
-  return data.translatedText as string;
-}
+import { translateFromEnglish } from '../utils/translateToArmenian'; // ⭐ NEW import
 
 interface AddWordModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (word: { english: string; armenian: string }) => void;
+  onSave: (word: { english: string; translation: string }) => void; // ⭐ renamed armenian → translation
 }
 
 interface DictionaryData {
@@ -54,14 +18,13 @@ interface DictionaryData {
 
 const AddWordModal: React.FC<AddWordModalProps> = ({ isOpen, onClose, onSave }) => {
   const [englishWord, setEnglishWord] = useState('');
-  const [armenianTranslation, setArmenianTranslation] = useState('');
+  const [translation, setTranslation] = useState(''); // ⭐ renamed
   const [isSaving, setIsSaving] = useState(false);
   const [dictionaryData, setDictionaryData] = useState<DictionaryData | null>(null);
   const [isLoadingDefinition, setIsLoadingDefinition] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
   const [translationError, setTranslationError] = useState<string | null>(null);
 
-  // Debounce timer for definition fetch
   const translationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const playPronunciation = useCallback(() => {
@@ -103,22 +66,28 @@ const AddWordModal: React.FC<AddWordModalProps> = ({ isOpen, onClose, onSave }) 
     }
   }, []);
 
-  const translateToArmenian = useCallback(async (word: string) => {
+  // ⭐ updated: use translateFromEnglish
+  const doTranslate = useCallback(async (word: string) => {
     if (!word.trim()) {
-      setArmenianTranslation('');
+      setTranslation('');
       return;
     }
     setIsTranslating(true);
     setTranslationError(null);
     try {
-      const translated = await translateWithGoogle(word.trim(), 'auto', 'hy');
-      setArmenianTranslation(translated);
+      const res = await translateFromEnglish(word.trim());
+      if (res.success) {
+        setTranslation(res.translatedText);
+      } else {
+        setTranslation('');
+        setTranslationError(`❌ ${res.error || 'Translation failed'}`);
+      }
     } catch (error: any) {
       console.error('Translation error:', error);
       setTranslationError(`❌ ${error?.message || 'Translation failed. Please try again.'}`);
-      setTimeout(() => setTranslationError(null), 4000);
     } finally {
       setIsTranslating(false);
+      setTimeout(() => setTranslationError(null), 4000);
     }
   }, []);
 
@@ -126,9 +95,7 @@ const AddWordModal: React.FC<AddWordModalProps> = ({ isOpen, onClose, onSave }) 
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const value = e.target.value;
       setEnglishWord(value);
-      if (translationTimeoutRef.current) {
-        clearTimeout(translationTimeoutRef.current);
-      }
+      if (translationTimeoutRef.current) clearTimeout(translationTimeoutRef.current);
       translationTimeoutRef.current = setTimeout(() => {
         fetchDefinition(value);
       }, 300);
@@ -137,17 +104,17 @@ const AddWordModal: React.FC<AddWordModalProps> = ({ isOpen, onClose, onSave }) 
   );
 
   const handleEnglishWordBlur = useCallback(() => {
-    if (englishWord.trim()) translateToArmenian(englishWord);
-  }, [englishWord, translateToArmenian]);
+    if (englishWord.trim()) doTranslate(englishWord);
+  }, [englishWord, doTranslate]);
 
   const handleEnglishWordKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.key === 'Enter' || e.key === 'Tab') {
         if (translationTimeoutRef.current) clearTimeout(translationTimeoutRef.current);
-        if (englishWord.trim()) translateToArmenian(englishWord);
+        if (englishWord.trim()) doTranslate(englishWord);
       }
     },
-    [englishWord, translateToArmenian]
+    [englishWord, doTranslate]
   );
 
   useEffect(() => {
@@ -158,7 +125,7 @@ const AddWordModal: React.FC<AddWordModalProps> = ({ isOpen, onClose, onSave }) 
 
   const handleClose = useCallback(() => {
     setEnglishWord('');
-    setArmenianTranslation('');
+    setTranslation('');
     setDictionaryData(null);
     setIsTranslating(false);
     setTranslationError(null);
@@ -167,17 +134,17 @@ const AddWordModal: React.FC<AddWordModalProps> = ({ isOpen, onClose, onSave }) 
   }, [onClose]);
 
   const handleSave = useCallback(async () => {
-    if (!englishWord.trim() || !armenianTranslation.trim()) return;
+    if (!englishWord.trim() || !translation.trim()) return;
     setIsSaving(true);
-    await onSave({ english: englishWord.trim(), armenian: armenianTranslation.trim() });
+    await onSave({ english: englishWord.trim(), translation: translation.trim() }); // ⭐ save translation
     setEnglishWord('');
-    setArmenianTranslation('');
+    setTranslation('');
     setDictionaryData(null);
     setIsTranslating(false);
     setTranslationError(null);
     setIsSaving(false);
     onClose();
-  }, [englishWord, armenianTranslation, onSave, onClose]);
+  }, [englishWord, translation, onSave, onClose]);
 
   if (!isOpen) return null;
 
@@ -221,31 +188,31 @@ const AddWordModal: React.FC<AddWordModalProps> = ({ isOpen, onClose, onSave }) 
             </div>
           </div>
 
-          {/* Armenian Translation */}
+          {/* Translation */}
           <div className="space-y-2">
-            <label htmlFor="armenian-translation" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="translation" className="block text-sm font-medium text-gray-700">
               <div className="flex items-center space-x-2">
                 <Languages className="w-4 h-4" />
-                <span>Armenian Translation</span>
+                <span>Translation</span>
                 {isTranslating && <Loader2 className="w-4 h-4 text-indigo-500 animate-spin" />}
               </div>
             </label>
             <input
-              id="armenian-translation"
+              id="translation"
               type="text"
-              value={armenianTranslation}
-              onChange={(e) => setArmenianTranslation(e.target.value)}
+              value={translation}
+              onChange={(e) => setTranslation(e.target.value)}
               className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 ${
                 isTranslating ? 'border-indigo-300 bg-indigo-50 text-gray-900' : 'border-gray-300 text-gray-900'
               }`}
-              placeholder="Translation (Google)"
+              placeholder="Translation"
               disabled={isTranslating}
               style={{ color: '#111827' }}
             />
             {isTranslating && (
               <p className="text-xs text-indigo-600 flex items-center space-x-1">
                 <Loader2 className="w-3 h-3 animate-spin" />
-                <span>Translating with Google…</span>
+                <span>Translating…</span>
               </p>
             )}
           </div>
@@ -294,7 +261,7 @@ const AddWordModal: React.FC<AddWordModalProps> = ({ isOpen, onClose, onSave }) 
           </button>
           <button
             onClick={handleSave}
-            disabled={!englishWord.trim() || !armenianTranslation.trim() || isSaving}
+            disabled={!englishWord.trim() || !translation.trim() || isSaving}
             className="px-6 py-2 bg-gradient-to-r from-indigo-500 to-cyan-500 text-white rounded-lg font-medium hover:from-indigo-600 hover:to-cyan-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center space-x-2"
           >
             {isSaving ? (
